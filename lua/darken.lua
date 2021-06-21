@@ -87,10 +87,18 @@ function M.darken()
   local ft = vim.o.filetype
 
   if M.config.filetypes[ft] == nil then
+    -- Remove hightlight
+    if w.darkened then
+      cmd 'setlocal winhighlight='
+    end
     return
   end
 
   cmd('setlocal winhighlight=' .. highlights)
+
+  -- Keep track if window was highlighted by this plugin to not conflict with
+  -- other plugins winhighlight, like Telescope does.
+  w.darkened = true
 end
 
 return M
