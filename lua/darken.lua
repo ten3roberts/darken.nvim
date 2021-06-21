@@ -1,8 +1,10 @@
-local fn = vim.fn
+local w = vim.w
 local cmd = vim.cmd
+local fn = vim.fn
 
 local defaults = {
   amount = 0.7,
+  group = 'Normal',
   filetypes = { 'NvimTree', 'qf', 'Outline' }
 }
 
@@ -24,9 +26,9 @@ local function darken_color(color, amount)
   b = math.min(math.floor(b * amount), 255)
 
   -- Convert back to hex
-  r = string.format('%0x', r)
-  g = string.format('%0x', g)
-  b = string.format('%0x', b)
+  r = string.format('%02x', r)
+  g = string.format('%02x', g)
+  b = string.format('%02x', b)
   return '#' .. r .. g .. b
 end
 
@@ -56,13 +58,14 @@ function M.setup(config)
   M.set_highlights()
 end
 
+-- Create highlight groups
 function M.set_highlights()
   local amount = M.config.amount
-  local normal_bg = darken_color(fn.synIDattr(fn.hlID('Normal'), 'bg'), amount)
+  local normal_bg = darken_color(fn.synIDattr(fn.hlID(M.config.group or 'Normal'), 'bg'), amount)
   local cursorline_bg = darken_color(fn.synIDattr(fn.hlID('CursorLine'), 'bg'), amount)
 
   cmd('hi! DarkenedBg guibg=' .. normal_bg)
-  cmd('hi! DarkenedSplit guibg=' .. normal_bg .. ' guifg=' .. normal_bg)
+  cmd('hi! DarkenedFull guibg=' .. normal_bg .. ' guifg=' .. normal_bg)
   cmd('hi! DarkenedStatusline gui=NONE guibg=' .. normal_bg)
   cmd('hi! DarkenedCursorLine gui=NONE guibg=' .. cursorline_bg)
   -- setting cterm to italic is a hack
@@ -73,8 +76,7 @@ end
 local highlights = table.concat({
   'Normal:DarkenedBg',
   'EndOfBuffer:DarkenedBg',
-  'VertSplit:DarkenedSplit',
-  'EndOfBuffer:DarkenedSplit',
+  'EndOfBuffer:DarkenedFull',
   'StatusLine:DarkenedStatusline',
   'StatusLineNC:DarkenedStatuslineNC',
   'SignColumn:DarkenedBg',
