@@ -26,10 +26,7 @@ local function darken_color(color, amount)
   b = math.min(math.floor(b * amount), 255)
 
   -- Convert back to hex
-  r = string.format('%02x', r)
-  g = string.format('%02x', g)
-  b = string.format('%02x', b)
-  return '#' .. r .. g .. b
+  return string.format('#%02x%02x%02x', r, g, b)
 end
 
 local M = {}
