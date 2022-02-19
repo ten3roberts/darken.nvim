@@ -1,4 +1,5 @@
 local w = vim.w
+local o = vim.o
 local cmd = vim.cmd
 local fn = vim.fn
 
@@ -47,7 +48,7 @@ function M.setup(config)
   cmd [[
   augroup Darken
   autocmd!
-  autocmd Filetype,BufWinEnter * lua require'darken'.darken()
+  autocmd Filetype,BufWinEnter,WinEnter,WinNew * lua require'darken'.darken()
   autocmd ColorScheme * lua require'darken'.set_highlights()
   augroup END
   ]]
@@ -81,21 +82,27 @@ local highlights = table.concat({
 }, ',')
 
 function M.darken()
-  local ft = vim.o.filetype
+  local ft = o.ft or "none"
 
-  if M.config.filetypes[ft] == nil then
+  if M.config.filetypes[ft] == nil and w.darkened ~= ft then
     -- Remove hightlight
     if w.darkened then
       cmd 'setlocal winhighlight='
+      w.darkened = nil
     end
     return
   end
 
+  M.force_darken("soft")
+end
+
+-- Forcibly darkens the current buffer
+function M.force_darken(val)
   cmd('setlocal winhighlight=' .. highlights)
 
   -- Keep track if window was highlighted by this plugin to not conflict with
   -- other plugins winhighlight, like Telescope does.
-  w.darkened = true
+  w.darkened = o.ft or "none"
 end
 
 return M
