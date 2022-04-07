@@ -6,7 +6,7 @@ local fn = vim.fn
 local defaults = {
   amount = 0.7,
   group = 'Normal',
-  filetypes = { 'NvimTree', 'qf', 'Outline', 'help' },
+  filetypes = { 'NvimTree', 'qf', 'Outline', 'help', "dapui.*" },
   buftypes = { "terminal" }
 }
 
@@ -35,20 +35,6 @@ local M = {}
 
 function M.setup(config)
   config = vim.tbl_extend('force', defaults, config or {})
-
-  -- Convert the list into a set
-  local filetypes = {}
-  local buftypes = {}
-  for _,v in pairs(config.filetypes) do
-    filetypes[v] = true
-  end
-
-  for _,v in pairs(config.buftypes) do
-    buftypes[v] = true
-  end
-
-  config.filetypes = filetypes
-  config.buftypes = buftypes
 
   M.config = config
 
@@ -88,16 +74,36 @@ local highlights = table.concat({
   'CursorLine:DarkenedCursorLine',
 }, ',')
 
+local cache_ft = {}
+local cache_bt = {}
+
+local function matched(cache, list, val)
+  local c = cache[val]
+  if c ~= nil then return c end
+
+  for _,v in ipairs(list) do
+    if val:match(v) then
+      cache[val] = true
+      return true
+    end
+  end
+
+  cache[val] = false
+end
+
 function M.darken()
   local ft = o.ft or ""
   local bt = o.buftype or ""
+
+  ft = matched(cache_ft, M.config.filetypes, ft)
+  bt = matched(cache_bt, M.config.buftypes, bt)
 
   -- Ft changed
   -- if w.darkened and w.darkened ~= ft then
   --   M.remove_hl()
   -- end
 
-  if M.config.filetypes[ft] or M.config.buftypes[bt] then
+  if ft or bt then
     M.force_darken()
   end
 end
