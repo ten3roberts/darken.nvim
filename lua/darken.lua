@@ -6,7 +6,8 @@ local fn = vim.fn
 local defaults = {
   amount = 0.7,
   group = 'Normal',
-  filetypes = { 'NvimTree', 'qf', 'Outline' }
+  filetypes = { 'NvimTree', 'qf', 'Outline', 'help' },
+  buftypes = { "terminal" }
 }
 
 -- Convert hex code to r,g,b
@@ -37,11 +38,17 @@ function M.setup(config)
 
   -- Convert the list into a set
   local filetypes = {}
+  local buftypes = {}
   for _,v in pairs(config.filetypes) do
     filetypes[v] = true
   end
 
+  for _,v in pairs(config.buftypes) do
+    buftypes[v] = true
+  end
+
   config.filetypes = filetypes
+  config.buftypes = buftypes
 
   M.config = config
 
@@ -82,27 +89,31 @@ local highlights = table.concat({
 }, ',')
 
 function M.darken()
-  local ft = o.ft or "none"
+  local ft = o.ft or ""
+  local bt = o.buftype or ""
 
-  if M.config.filetypes[ft] == nil and w.darkened ~= ft then
-    -- Remove hightlight
-    if w.darkened then
-      cmd 'setlocal winhighlight='
-      w.darkened = nil
-    end
-    return
+  -- Ft changed
+  -- if w.darkened and w.darkened ~= ft then
+  --   M.remove_hl()
+  -- end
+
+  if M.config.filetypes[ft] or M.config.buftypes[bt] then
+    M.force_darken()
   end
+end
 
-  M.force_darken("soft")
+function M.remove_hl()
+  cmd 'setlocal winhighlight='
+  w.darkened = nil
 end
 
 -- Forcibly darkens the current buffer
-function M.force_darken(val)
+function M.force_darken()
   cmd('setlocal winhighlight=' .. highlights)
 
   -- Keep track if window was highlighted by this plugin to not conflict with
   -- other plugins winhighlight, like Telescope does.
-  w.darkened = o.ft or "none"
+  w.darkened = o.ft or ""
 end
 
 return M
