@@ -48,7 +48,7 @@ function M.setup(config)
   cmd [[
   augroup Darken
   autocmd!
-  autocmd Filetype,BufWinEnter,WinEnter,WinNew * lua require'darken'.darken()
+  autocmd Filetype,BufWinEnter,WinEnter,WinNew,TermEnter,TermOpen * lua require'darken'.darken()
   autocmd ColorScheme * lua require'darken'.set_highlights()
   augroup END
   ]]
