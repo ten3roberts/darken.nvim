@@ -1,12 +1,13 @@
 local w = vim.w
 local o = vim.o
+local api = vim.api
 local cmd = vim.cmd
 local fn = vim.fn
 
 local defaults = {
   amount = 0.7,
   group = 'Normal',
-  filetypes = { 'NvimTree', 'qf', 'Outline', 'help', "dapui.*" },
+  filetypes = { 'NvimTree', 'qf', 'Outline', 'help', "dap.*", "aerial" },
   buftypes = { "terminal" }
 }
 
@@ -16,6 +17,9 @@ local function to_rgb(color)
 end
 
 local function darken_color(color, amount)
+  if vim.o.background == "light" then
+    amount = 2.0 - amount
+  end
   local r, g, b = to_rgb(color)
   -- If any of the colors are missing return 'NONE' i.e. no highlight
   if not r or not g or not b then
@@ -38,13 +42,13 @@ function M.setup(config)
 
   M.config = config
 
-  cmd [[
-  augroup Darken
-  autocmd!
-  autocmd Filetype,BufWinEnter,WinEnter,WinNew,TermEnter,TermOpen * lua require'darken'.darken()
-  autocmd ColorScheme * lua require'darken'.set_highlights()
-  augroup END
-  ]]
+  local group = api.nvim_create_augroup("Darken", { clear = true })
+  local function au(event, callback)
+    api.nvim_create_autocmd(event, { callback = callback, group = group })
+  end
+
+  au({ "Filetype", "BufWinEnter", "WinEnter", "WinNew", "TermEnter", "TermOpen" }, M.darken)
+  au({ "ColorScheme" }, M.set_highlights)
 
   M.set_highlights()
 end
@@ -81,14 +85,15 @@ local function matched(cache, list, val)
   local c = cache[val]
   if c ~= nil then return c end
 
-  for _,v in ipairs(list) do
-    if val:match(v) then
+  for _, pat in ipairs(list) do
+    if string.match(val, pat) ~= nil then
       cache[val] = true
       return true
     end
   end
 
   cache[val] = false
+  return false
 end
 
 function M.darken()
@@ -98,13 +103,10 @@ function M.darken()
   ft = matched(cache_ft, M.config.filetypes, ft)
   bt = matched(cache_bt, M.config.buftypes, bt)
 
-  -- Ft changed
-  -- if w.darkened and w.darkened ~= ft then
-  --   M.remove_hl()
-  -- end
-
   if ft or bt then
     M.force_darken()
+  elseif w.darkened == 1 then
+    M.remove_hl()
   end
 end
 
@@ -119,7 +121,7 @@ function M.force_darken()
 
   -- Keep track if window was highlighted by this plugin to not conflict with
   -- other plugins winhighlight, like Telescope does.
-  w.darkened = o.ft or ""
+  w.darkened = 1
 end
 
 return M
