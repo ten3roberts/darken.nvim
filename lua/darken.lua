@@ -74,6 +74,7 @@ function M.set_highlights()
 	api.nvim_set_hl(0, "DarkenedFull", { bg = dark_bg, fg = dark_bg })
 
 	api.nvim_set_hl(ns_id, "Normal", { link = "Darkened" })
+	api.nvim_set_hl(ns_id, "AerialNormal", { link = "Darkened" })
 	api.nvim_set_hl(ns_id, "EndOfBuffer", { link = "DarkenedFull" })
 	api.nvim_set_hl(ns_id, "StatusLine", { link = "DarkenedStatusline" })
 	api.nvim_set_hl(ns_id, "StatusLineNC", { link = "Darkened" })
