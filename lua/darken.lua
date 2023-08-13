@@ -49,10 +49,19 @@ function M.setup(config)
 		api.nvim_create_autocmd(event, { callback = callback, group = group })
 	end
 
-	au({ "Filetype", "BufWinEnter", "WinEnter", "WinNew", "TermEnter", "TermOpen" }, M.darken)
-	au({ "ColorScheme" }, M.set_highlights)
+	au({ "Filetype", "BufWinEnter", "WinEnter", "WinNew", "TermEnter", "TermOpen" }, function(o)
+		if api.nvim_win_get_buf(api.nvim_get_current_win()) ~= o.buf then
+			-- vim.notify(string.format("Autocommand %q did not match window", o.event))
+		end
 
-	M.set_highlights()
+		local current_win = api.nvim_get_current_win()
+		for _, win in ipairs(vim.fn.win_findbuf(o.buf)) do
+			M.darken(win)
+		end
+	end)
+	au({ "ColorScheme" }, M.configure_hl)
+
+	M.configure_hl()
 end
 
 function M.get_bg_color()
@@ -63,48 +72,26 @@ end
 local ns_id = api.nvim_create_namespace("Darken")
 
 -- Create highlight groups
-function M.set_highlights()
+function M.configure_hl()
 	local amount = M.config.amount
 	local dark_bg = darken_color(fn.synIDattr(fn.hlID(M.config.group or "Normal"), "bg"), amount)
 	local statusline_bg = darken_color(fn.synIDattr(fn.hlID("StatusLine"), "bg"), amount)
+	local statusline_nc_bg = darken_color(fn.synIDattr(fn.hlID("StatusLine"), "bg"), math.pow(amount, 1.0 / 1.2))
 	local cursorline_bg = darken_color(fn.synIDattr(fn.hlID("CursorLine"), "bg"), amount)
 
 	api.nvim_set_hl(0, "Darkened", { bg = dark_bg })
 	api.nvim_set_hl(0, "DarkenedStatusline", { bg = statusline_bg })
+	api.nvim_set_hl(0, "DarkenedStatuslineNC", { bg = statusline_nc_bg })
 	api.nvim_set_hl(0, "DarkenedFull", { bg = dark_bg, fg = dark_bg })
 
 	api.nvim_set_hl(ns_id, "Normal", { link = "Darkened" })
 	api.nvim_set_hl(ns_id, "AerialNormal", { link = "Darkened" })
 	api.nvim_set_hl(ns_id, "EndOfBuffer", { link = "DarkenedFull" })
 	api.nvim_set_hl(ns_id, "StatusLine", { link = "DarkenedStatusline" })
-	api.nvim_set_hl(ns_id, "StatusLineNC", { link = "Darkened" })
+	api.nvim_set_hl(ns_id, "StatusLineNC", { link = "DarkenedStatusLineNC" })
 	api.nvim_set_hl(ns_id, "SignColumn", { link = "Darkened" })
 	api.nvim_set_hl(ns_id, "CursorLine", { link = "Darkened" })
-	-- api.nvim_set_hl(ns_id, "Normal", { bg = dark_bg })
-	-- api.nvim_set_hl(ns_id, "EndOfBuffer", { bg = dark_bg, fg = dark_bg })
-	-- api.nvim_set_hl(ns_id, "StatusLine", { bg = dark_bg, fg = dark_bg })
-	-- api.nvim_set_hl(ns_id, "StatusLineNC", { bg = dark_bg })
-	-- api.nvim_set_hl(ns_id, "SignColumn", { bg = dark_bg })
-	-- api.nvim_set_hl(ns_id, "CursorLine", { bg = cursorline_bg })
-
-	-- cmd("hi! Darkened guibg=" .. normal_bg)
-	-- cmd("hi! DarkenedFull guibg=" .. normal_bg .. " guifg=" .. normal_bg)
-	-- cmd("hi! DarkenedStatusline gui=NONE guibg=" .. normal_bg)
-	-- cmd("hi! DarkenedCursorLine gui=NONE guibg=" .. cursorline_bg)
-	-- -- setting cterm to italic is a hack
-	-- -- to prevent the statusline caret issue
-	-- cmd("hi! DarkenedStatuslineNC cterm=italic gui=NONE guibg=" .. normal_bg)
 end
-
--- local highlights = table.concat({
--- 	"Normal:Darkened",
--- 	"EndOfBuffer:Darkened",
--- 	"EndOfBuffer:DarkenedFull",
--- 	"StatusLine:DarkenedStatusline",
--- 	"StatusLineNC:DarkenedStatuslineNC",
--- 	"SignColumn:Darkened",
--- 	"CursorLine:DarkenedCursorLine",
--- }, ",")
 
 local cache_ft = {}
 local cache_bt = {}
@@ -126,8 +113,7 @@ local function matched(cache, list, val)
 	return false
 end
 
-function M.darken()
-	local winid = api.nvim_get_current_win()
+function M.darken(winid)
 	local bufnr = api.nvim_win_get_buf(winid)
 	local ft = api.nvim_buf_get_option(bufnr, "filetype")
 	local bt = api.nvim_buf_get_option(bufnr, "buftype")
@@ -136,7 +122,7 @@ function M.darken()
 	local bt = matched(cache_bt, M.config.buftypes, bt)
 
 	if ft or bt then
-		M.force_darken(winid)
+		M.set_hl(winid)
 	elseif vim.w[winid].darkened == 1 then
 		M.remove_hl(winid)
 	end
@@ -145,10 +131,24 @@ end
 function M.remove_hl(winid)
 	api.nvim_win_set_hl_ns(winid, 0)
 	api.nvim_win_set_var(winid, "darkened", nil)
+
+	local bufnr = api.nvim_win_get_buf(winid)
+	local bufname = api.nvim_buf_get_name(bufnr)
+	local ft = vim.bo[bufnr].filetype
+	local bt = vim.bo[bufnr].buftype
+
+	-- vim.notify(string.format("Removing highlight of %s %s:%s", bufname, ft, bt))
 end
 
 -- Forcibly darkens the current buffer
-function M.force_darken(winid)
+function M.set_hl(winid)
+	local bufnr = api.nvim_win_get_buf(winid)
+	local bufname = api.nvim_buf_get_name(bufnr)
+	local ft = vim.bo[bufnr].filetype
+	local bt = vim.bo[bufnr].buftype
+
+	-- vim.notify(string.format("Darkening %s %s:%s", bufname, ft, bt))
+
 	api.nvim_win_set_hl_ns(winid, ns_id)
 	-- Keep track if window was highlighted by this plugin to not conflict with
 	-- other plugins winhighlight, like Telescope does.
